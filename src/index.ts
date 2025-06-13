@@ -53,6 +53,7 @@ const _crawlSite = async ({
     rootUrl,
     maxPages,
   });
+  console.log('crawlLinks: ', urls);
   const results: { url: string; content: string }[] = [];
   for (const url of urls) {
     const page = await _getPageContent({
@@ -65,6 +66,9 @@ const _crawlSite = async ({
   return results;
 };
 
+/**
+ * _getPageContent extract all the content from each founded link
+ */
 const _getPageContent = async ({ url }: { url: string }) => {
   try {
     const response = await axios.get(url, { timeout: 8000 });
@@ -80,7 +84,7 @@ const _getPageContent = async ({ url }: { url: string }) => {
 
     // Cleaning content string
     const content = article?.textContent?.replace(/\s+/g, ' ').trim() ?? '';
-    console.log(content);
+    // console.log('getPageContent: ', content);
 
     if (content.length >= 200) {
       return { url, content };
@@ -91,6 +95,9 @@ const _getPageContent = async ({ url }: { url: string }) => {
   }
 };
 
+/**
+ * _crawlLinks will get all important link from root url
+ */
 const _crawlLinks = async ({
   rootUrl,
   maxPages = 10,
@@ -99,11 +106,14 @@ const _crawlLinks = async ({
   maxPages?: number;
 }) => {
   const normalizedRootUrlObj = new URL(rootUrl);
+  // console.log('normalizedRootUrlObj', normalizedRootUrlObj);
+
   normalizedRootUrlObj.hash = '';
   const normalizedRootUrl = normalizedRootUrlObj.href;
 
   const visited = new Set<string>();
   const toVisit = [normalizedRootUrl];
+  // console.log('toVisit: ', toVisit);
   const baseDomain = new URL(normalizedRootUrl).origin;
   const foundUrls: string[] = [];
 
@@ -116,6 +126,8 @@ const _crawlLinks = async ({
 
     try {
       const response = await axios.get(currentUrl, { timeout: 8000 });
+      // console.log('response: ', response);
+
       const contentType = response.headers['content-type'];
       if (!contentType || !contentType.includes('text/html')) {
         console.log(`Skipped (not HTML content): ${currentUrl}`);
@@ -123,6 +135,7 @@ const _crawlLinks = async ({
       }
       const dom = new JSDOM(response.data, { url: currentUrl });
       const doc = dom.window.document;
+      // console.log('doc: ', doc);
 
       foundUrls.push(currentUrl);
 
