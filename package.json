@@ -1,5 +1,5 @@
 {
-  "name": "web-crawling",
+  "name": "crawling-api",
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/index.ts",

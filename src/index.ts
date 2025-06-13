@@ -1,41 +1,41 @@
-import { serve } from "@hono/node-server";
-import { zValidator } from "@hono/zod-validator";
-import { Readability } from "@mozilla/readability";
-import axios from "axios";
-import { Hono } from "hono";
-import { cors } from "hono/cors";
-import { JSDOM } from "jsdom";
-import { z } from "zod";
+import { serve } from '@hono/node-server';
+import { zValidator } from '@hono/zod-validator';
+import { Readability } from '@mozilla/readability';
+import axios from 'axios';
+import { Hono } from 'hono';
+import { cors } from 'hono/cors';
+import { JSDOM } from 'jsdom';
+import { z } from 'zod';
 
 const app = new Hono();
 
 app.use(
   cors({
-    origin: "*",
-  })
+    origin: '*',
+  }),
 );
 
-app.get("/", (c) => {
-  return c.text("Hello Hono!");
+app.get('/', (c) => {
+  return c.text('Hello Hono!');
 });
 
 app.post(
-  "/crawl",
+  '/crawl',
   zValidator(
-    "json",
+    'json',
     z.object({
       url: z.string(),
-      maxDepth: z.number().optional().default(10),
-    })
+      maxDepth: z.number().optional().default(10), // maximum number of pages to crawl
+    }),
   ),
   async (c) => {
-    const { maxDepth, url } = c.req.valid("json");
+    const { maxDepth, url } = c.req.valid('json');
     const result = await _crawlSite({
       rootUrl: url,
       maxPages: maxDepth,
     });
     return c.json(result);
-  }
+  },
 );
 
 /**
@@ -68,8 +68,8 @@ const _crawlSite = async ({
 const _getPageContent = async ({ url }: { url: string }) => {
   try {
     const response = await axios.get(url, { timeout: 8000 });
-    const contentType = response.headers["content-type"];
-    if (!contentType || !contentType.includes("text/html")) {
+    const contentType = response.headers['content-type'];
+    if (!contentType || !contentType.includes('text/html')) {
       return null;
     }
     const dom = new JSDOM(response.data, { url });
@@ -77,7 +77,10 @@ const _getPageContent = async ({ url }: { url: string }) => {
 
     const reader = new Readability(doc);
     const article = reader.parse();
-    const content = article?.textContent?.replace(/\s\s+/g, " ").trim() ?? "";
+
+    // Cleaning content string
+    const content = article?.textContent?.replace(/\s+/g, ' ').trim() ?? '';
+    console.log(content);
 
     if (content.length >= 200) {
       return { url, content };
@@ -96,7 +99,7 @@ const _crawlLinks = async ({
   maxPages?: number;
 }) => {
   const normalizedRootUrlObj = new URL(rootUrl);
-  normalizedRootUrlObj.hash = "";
+  normalizedRootUrlObj.hash = '';
   const normalizedRootUrl = normalizedRootUrlObj.href;
 
   const visited = new Set<string>();
@@ -113,8 +116,8 @@ const _crawlLinks = async ({
 
     try {
       const response = await axios.get(currentUrl, { timeout: 8000 });
-      const contentType = response.headers["content-type"];
-      if (!contentType || !contentType.includes("text/html")) {
+      const contentType = response.headers['content-type'];
+      if (!contentType || !contentType.includes('text/html')) {
         console.log(`Skipped (not HTML content): ${currentUrl}`);
         continue;
       }
@@ -123,13 +126,13 @@ const _crawlLinks = async ({
 
       foundUrls.push(currentUrl);
 
-      const links = Array.from(doc.querySelectorAll("a"))
-        .map((a) => a.getAttribute("href"))
+      const links = Array.from(doc.querySelectorAll('a'))
+        .map((a) => a.getAttribute('href'))
         .filter((href): href is string => !!href)
         .map((href) => {
           try {
             const url = new URL(href, currentUrl);
-            url.hash = "";
+            url.hash = '';
             return url.href;
           } catch {
             return null;
@@ -137,7 +140,7 @@ const _crawlLinks = async ({
         })
         .filter(
           (href): href is string =>
-            !!href && href.startsWith(baseDomain) && !visited.has(href)
+            !!href && href.startsWith(baseDomain) && !visited.has(href),
         );
 
       toVisit.push(...links);
@@ -155,5 +158,5 @@ serve(
   },
   (info) => {
     console.log(`Server is running on http://localhost:${info.port}`);
-  }
+  },
 );
